@@ -112,10 +112,6 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <None Include="src\arduino folders read me.txt">
-    </None>
-  </ItemGroup>
-  <ItemGroup>
     <ClInclude Include="src\CANLibrarymaster\can.h" />
     <ClInclude Include="src\HelperFunctions.h" />
     <ClInclude Include="src\Map1d.h" />

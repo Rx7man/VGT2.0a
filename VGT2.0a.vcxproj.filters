@@ -15,9 +15,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <None Include="src\arduino folders read me.txt">
-      <Filter>Misc Files</Filter>
-    </None>
     <None Include="src\VGT2.0a.ino">
       <Filter>Source Files</Filter>
     </None>
