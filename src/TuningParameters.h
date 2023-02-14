@@ -2,41 +2,44 @@
 #ifndef TuningParameters_h
 #define TuningParameters_h
 
-int TurbineSpeedDivisions[] = { 0, 20, 40, 60, 80, 100, 120, 140 };
-int TpsRowLabels[] = { 0, 5, 20, 40, 60, 100 };
-int RPMdivisions[] = { 0, 500, 750, 1000, 1250, 1500, 2000,  2500, 3000, 5000 };
-int PressureDivisions[] = { 0, 5, 10, 15, 20, 25, 30, 40, 60, 90 };
+
+struct TuningParams
+{
+int TurbineSpeedDivisions[8] = { 0, 20, 40, 60, 80, 100, 120, 140 };
+int TpsRowLabels[6] = { 0, 5, 20, 40, 60, 100 };
+int RPMdivisions[10] = { 0, 500, 750, 1000, 1250, 1500, 2000,  2500, 3000, 5000 };
+int PressureDivisions[10] = { 0, 5, 10, 15, 20, 25, 30, 40, 60, 90 };
 
 
-int LilbbMapData_Up[] = //Tow
+int LilbbMapData_Up[8] = //Tow
 // 0   20   40   60   80   100  120  140 
 { 95,  95,  90,  80,  75,  50,  30,  0 };
 
-int LilbbMapData_Middle[] = //Normal
+int LilbbMapData_Middle[8] = //Normal
 // 0   20   40   60   80   100  120  140 
 { 90,  90,  85,  80,  70,  52,  30,  0 };
 
-int LilbbMapData_Down[] = //Low Boost
+int LilbbMapData_Down[8] = //Low Boost
 // 0   20   40   60   80   100  120  140 
 { 90,  90,  80,  70,  60,  50,  20,  0 };
 
 
 //                    RPM      500    1000    1500    2500    5000  Uses RpmColumnLabels as breakpoints
-int AutobrakeMapData[] = { 90, 90, 90, 90, 96, 95, 94, 93, 90, 80 };
-int BoostRPMMapData[] = { 25,  5,  5,  5,  10, 29, 25, 35, 40, 40 };
+int AutobrakeMapData[10] = { 90, 90, 90, 90, 96, 95, 94, 93, 90, 80 };
+int BoostRPMMapData[10] = { 25,  5,  5,  5,  10, 29, 25, 35, 40, 40 };
 
 
 //                    RPM               500    1000    1500    2500    5000  Uses RpmColumnLabels as breakpoints
-int RPMminimumPositionMapData[] = { 60, 96, 96, 91, 89, 84, 80, 75, 70, 50 };
+int RPMminimumPositionMapData[10] = { 60, 96, 96, 91, 89, 84, 80, 75, 70, 50 };
 
 //                                  0   20  40  60  80  100 120 140  
-int TSSminimumPositionMapData[] = { 96, 96, 96, 90, 85, 70, 30, 10 };
+int TSSminimumPositionMapData[8] = { 96, 96, 96, 90, 85, 70, 30, 10 };
 
 //								      0    5   10     20      30  40  60  90
-int BoostMinimumPositionMapData[] = { 96, 93, 90, 85, 80, 75, 70, 50, 30, 10 };
+int BoostMinimumPositionMapData[10] = { 96, 93, 90, 85, 80, 75, 70, 50, 30, 10 };
 
 //								    0    5   10      20      30  40  60  90
-int EGPminimumPositionMapData[] = { 96, 95,  94, 90, 85, 80, 70, 60, 30, 10 };
+int EGPminimumPositionMapData[10] = { 96, 95,  94, 90, 85, 80, 70, 60, 30, 10 };
 
 
 
@@ -84,6 +87,8 @@ const float IdleWalkdownLimitMinTemp = 80; //Doesn't walkdown the idle position 
 
 
 
+
+};
 
 
 #endif // !TuningParameters_h

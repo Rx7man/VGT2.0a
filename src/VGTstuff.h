@@ -1,17 +1,9 @@
 #pragma once
+
+
 #ifndef VGTstuff_h
 #define VGTstuff_h
 
-int VgtMaxPosition = 1000; //maximum value to command VGT to
-int VgtMinPosition = 0;    //minimum value to command VGT to
-
-int CanMessagesReceived = 0;          //number of CAN messages recieved since last serial display update
-
-									  //VGT return values
-int VgtRealPosition;         //The position the VGT is actually at (read from the CAN messages)
-int VgtCommandPosition;      //The position the VGT target
-int VgtMotorCommandSpeed;    //The speed and direction the vane motor is set to
-int VgtRawTemp;              //Temperature of the VGT control unit... should be pretty close to coolant temp in most situations
 
 
 float GetNozzleSizeFromVGTposition(int VGTposition) {
@@ -70,5 +62,8 @@ public:
 		Serial.println(RawTemp);
 	}
 };
+
+
+
 
 #endif // !VGTstuff_h

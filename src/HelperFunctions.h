@@ -1,6 +1,7 @@
 #pragma once
 #ifndef HelperFunctions_h
 #define HelperFunctions_h
+
 inline float mapf(float value, float oldlow, float oldhigh, float newlow, float newhigh, boolean Constrain) {
 	//TESTED
 	if (oldhigh == oldlow) {

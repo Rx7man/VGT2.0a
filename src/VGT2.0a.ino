@@ -18,12 +18,25 @@
 #include "TuningParameters.h"
 #include "VGTstuff.h"
 #include "AnalogSensorCalibration.h"
+#
+
+
 
 //#define baudrate 115200
 //#define baudrate 115200
 #define baudrate 921600
 
 MCP CAN1(CanControllerPin); //define CAN bus
+int VgtMaxPosition = 1000; //maximum value to command VGT to
+int VgtMinPosition = 0;    //minimum value to command VGT to
+
+int CanMessagesReceived = 0;          //number of CAN messages recieved since last serial display update
+
+					 //VGT return values
+int VgtRealPosition;         //The position the VGT is actually at (read from the CAN messages)
+int VgtCommandPosition;      //The position the VGT target
+int VgtMotorCommandSpeed;    //The speed and direction the vane motor is set to
+int VgtRawTemp;              //Temperature of the VGT control unit... should be pretty close to coolant temp in most situations
 
 volatile uint16_t TSScounts;      //counter for turbine shaft speed ISR and calculations
 volatile uint16_t RPMcounts;      //counter for engine RPM ISR and calculations
@@ -60,6 +73,8 @@ float Aux1; //Left Auxilaiary pot (scaled 0-100)
 float Aux2; // Right Auxiliary pot (scaled 0-100)
 int loopcounts = 0;         //number of times it runs through the loop between serial updates
 int blinksequencer = 0;
+TuningParams CurrentTune;
+
 
 #pragma region Program timing
 
@@ -86,6 +101,16 @@ Map1d BoostRPMMap(10); //Maximum boost based on RPM, helps prevent bark and blow
 Map1d RPMminimumPositionMap(10); //Minimum position based on engine RPM
 Map1d BoostMinimumPositionMap(10); //minimum position based on boost, may help keep the truck driveable if other sensors fail
 Map1d EGPminimumPositionMap(10);      //minimum position based on backpressure
+
+MyVar RPM; //Engine RPM
+MyVar TSS; //Turbine shaft speed
+MyVar TPS; //Throttle position
+MyVar MAP; //Manifold pressure
+MyVar EGP; //Exhaust pressure
+MyVar BPS; //brake pressure sensor
+MyVar FPS; //Fuel pressure sensor
+
+MyVar SendPosition;            //The value we're sending to the VGT
 
 int* LilbbMapData;
 
@@ -145,22 +170,10 @@ enum GlobalFloatIndexes :byte {
 
 float GlobalFloats[IndexCount];
 
-MyVar RPM; //Engine RPM
-MyVar TSS; //Turbine shaft speed
-MyVar TPS; //Throttle position
-MyVar MAP; //Manifold pressure
-MyVar EGP; //Exhaust pressure
-MyVar BPS; //brake pressure sensor
-MyVar FPS; //Fuel pressure sensor
-MyVar SendPosition;            //The value we're sending to the VGT
 
 int MinRawTPSposition = 25; // this automatically gets reduced to the minimum TPS raw position
 int MaxRawTPSposition = 500; // this needs to be manually adjusted to WOT
 
-AnalogSensor GM1Bar(Gm1BarMapSensorLowRawValue, Gm1BarMapSensorHighRawValue, Gm1BarMapSensorLowValuePressure, Gm1BarMapSensorHighValuePressure, false);
-AnalogSensor GM2Bar(Gm2BarMapSensorLowRawValue, Gm2BarMapSensorHighRawValue, Gm2BarMapSensorLowValuePressure, Gm2BarMapSensorHighValuePressure, false);
-AnalogSensor Honeywell100PSI(Honeywell100PsiLowRawValue, Honeywell100PsiHighRawValue, Honeywell100PsiLowValuePressure, Honeywell100PsiHighValuePressure, false);
-AnalogSensor Honeywell1000PSI(Honeywell1000PsiLowRawValue, Honeywell1000PsiHighRawValue, Honeywell1000PsiLowValuePressure, Honeywell1000PsiHighValuePressure, false);
 
 
 
@@ -316,34 +329,34 @@ void InitializeMaps() {
 
 
 	// 1D maps---------------------------------------------
-	LilbbMap.MapData = LilbbMapData_Middle; //this should be set when switches change but just give it something to start with
-	LilbbMap.Divisions = TurbineSpeedDivisions;
+	LilbbMap.MapData = CurrentTune.LilbbMapData_Middle; //this should be set when switches change but just give it something to start with
+	LilbbMap.Divisions = CurrentTune.TurbineSpeedDivisions;
 	LilbbMap.Scaling = 10;
 	//TODO: should actually use the "Scaling" option here for each map rather than having to multiply x10 later in the code
 
 
-	AutobrakeMap.MapData = AutobrakeMapData;
-	AutobrakeMap.Divisions = RPMdivisions;
+	AutobrakeMap.MapData = CurrentTune.AutobrakeMapData;
+	AutobrakeMap.Divisions = CurrentTune.RPMdivisions;
 	AutobrakeMap.Scaling = 10;
 
-	BoostRPMMap.MapData = BoostRPMMapData;
-	BoostRPMMap.Divisions = RPMdivisions;
+	BoostRPMMap.MapData = CurrentTune.BoostRPMMapData;
+	BoostRPMMap.Divisions = CurrentTune.RPMdivisions;
 	BoostRPMMap.Scaling = 1.0f;  //not 10! this is boost not position
 
-	RPMminimumPositionMap.MapData = RPMminimumPositionMapData;
-	RPMminimumPositionMap.Divisions = RPMdivisions;
+	RPMminimumPositionMap.MapData = CurrentTune.RPMminimumPositionMapData;
+	RPMminimumPositionMap.Divisions = CurrentTune.RPMdivisions;
 	RPMminimumPositionMap.Scaling = 10;
 
-	TSSminimumPositionMap.MapData = TSSminimumPositionMapData;
-	TSSminimumPositionMap.Divisions = TurbineSpeedDivisions;
+	TSSminimumPositionMap.MapData = CurrentTune.TSSminimumPositionMapData;
+	TSSminimumPositionMap.Divisions = CurrentTune.TurbineSpeedDivisions;
 	TSSminimumPositionMap.Scaling = 10;
 
-	BoostMinimumPositionMap.MapData = BoostMinimumPositionMapData;
-	BoostMinimumPositionMap.Divisions = PressureDivisions;
+	BoostMinimumPositionMap.MapData = CurrentTune.BoostMinimumPositionMapData;
+	BoostMinimumPositionMap.Divisions = CurrentTune.PressureDivisions;
 	BoostMinimumPositionMap.Scaling = 10;
 
-	EGPminimumPositionMap.MapData = EGPminimumPositionMapData;
-	EGPminimumPositionMap.Divisions = PressureDivisions;
+	EGPminimumPositionMap.MapData = CurrentTune.EGPminimumPositionMapData;
+	EGPminimumPositionMap.Divisions = CurrentTune.PressureDivisions;
 	EGPminimumPositionMap.Scaling = 10;
 
 }
@@ -458,7 +471,7 @@ void Timer1Routine() {
 		}
 	}
 	else {
-		SendPosition = VGTstartPosition; //if not running, set to static position and don't apply jake, etc
+		SendPosition = CurrentTune.VGTstartPosition; //if not running, set to static position and don't apply jake, etc
 	}
 
 	FormatForVGT(SendPosition);
@@ -569,17 +582,17 @@ void UpdateModeAndMap() {
 		case up:
 			Serial.println("Switching to UP map");
 			//PositionMap.mapData = PositionMapData_Up;
-			LilbbMap.MapData = LilbbMapData_Up;
+			LilbbMap.MapData = CurrentTune.LilbbMapData_Up;
 			break;
 		case middle:
 			Serial.println("Switching to MIDDLE map");
 			//PositionMap.mapData = PositionMapData_Middle;
-			LilbbMap.MapData = LilbbMapData_Middle;
+			LilbbMap.MapData = CurrentTune.LilbbMapData_Middle;
 			break;
 		case down:
 			Serial.println("Switching to DOWN map");
 			//PositionMap.mapData = PositionMapData_Down;
-			LilbbMap.MapData = LilbbMapData_Down;
+			LilbbMap.MapData = CurrentTune.LilbbMapData_Down;
 			break;
 		default:
 			//Serial.println("Somehow we have an undefined new map");
@@ -611,8 +624,8 @@ void UpdateModeAndMap() {
 void UpdateRunModes() {// Updates the "running" and "Idling" variables and calculates run and idle times
 
 	//Called from Timer1 routine
-	JakeBrakeMode = (JakeSwitch && (TPS.Value < JakeBrakeTPSthreshold));
-	JakeBoostMode = (JakeSwitch && (TPS.Value > JakeBrakeTPSthreshold));
+	JakeBrakeMode = (JakeSwitch && (TPS.Value < CurrentTune.JakeBrakeTPSthreshold));
+	JakeBoostMode = (JakeSwitch && (TPS.Value > CurrentTune.JakeBrakeTPSthreshold));
 
 
 	static unsigned long LastUpdateTime;
@@ -628,7 +641,7 @@ void UpdateRunModes() {// Updates the "running" and "Idling" variables and calcu
 
 	}
 
-	if (RPM.Value >= MinRunRPM) {
+	if (RPM.Value >= CurrentTune.MinRunRPM) {
 
 		if (Running) {//if already running, just calculate the start time
 			RunningTime += Timespan;
@@ -642,7 +655,7 @@ void UpdateRunModes() {// Updates the "running" and "Idling" variables and calcu
 		RunningTime = 0;
 	}
 
-	if (Running && RPM.Value <= MaxIdleRPM && TPS.Value <= MaxIdleTPS) {
+	if (Running && RPM.Value <= CurrentTune.MaxIdleRPM && TPS.Value <= CurrentTune.MaxIdleTPS) {
 		if (Idling) { //if idling already, calculate idle time
 			IdlingTime += Timespan;
 		}
@@ -731,10 +744,10 @@ void UpdateTotalCompensation() {
 	GlobalFloats[AutoCompIndex] = TotalCompensationValue;
 
 	TotalCompensationValue *= GlobalFloats[AuxCompIndex]; //Apply manual pot and jakek boost compensation last
-	if (JakeBoostMode) { TotalCompensationValue *= JakeBoostFactor; }
+	if (JakeBoostMode) { TotalCompensationValue *= CurrentTune.JakeBoostFactor; }
 
 
-	GlobalFloats[TotalCompensationIndex] = constrain(TotalCompensationValue, MinTotalCompensation, MaxTotalCompensation);
+	GlobalFloats[TotalCompensationIndex] = constrain(TotalCompensationValue, CurrentTune.MinTotalCompensation, CurrentTune.MaxTotalCompensation);
 }
 
 
@@ -745,13 +758,13 @@ void UpdateAntiSurgeLimit() {
 	//The faster you let off the throttle, and the faster the turbine is going
 	//the more chance of surge, so force nozzle open more aggressively
 	float Antisurge = 0;
-	if (TPS.Slope < -AntisurgeMinimumTPSslope) {
-		Antisurge = max(Antisurge, -min(TPS.Slope, 100) * AntisurgeResponseRate * TSS.Value);
+	if (TPS.Slope < -CurrentTune.AntisurgeMinimumTPSslope) {
+		Antisurge = max(Antisurge, -min(TPS.Slope, 100) * CurrentTune.AntisurgeResponseRate * TSS.Value);
 	}
 
-	Antisurge = constrain(Antisurge, 0, AntisurgeMaxVal);  //Limit to maximum value
+	Antisurge = constrain(Antisurge, 0, CurrentTune.AntisurgeMaxVal);  //Limit to maximum value
 	Antisurge = max(Antisurge, Carryover);        //If the carryover is larger than the current antisurge amount, use the carryover for the math
-	Carryover = Antisurge * AntisurgeFalloffRate; //Apply falloff to the carryover
+	Carryover = Antisurge * CurrentTune.AntisurgeFalloffRate; //Apply falloff to the carryover
 
 
 	if (Carryover <= 100 || (TPS.Slope >= 10 && TPS.Value >= 20)) {//Just zero it out if it's smaller than the minimum or getting back on the throttle
@@ -767,8 +780,8 @@ void UpdateIdleWalkdownLimit() {
 	//Called from ProgressiveController
 	static float IdleWalkdownLimitPosition = 960;
 
-	if (IdlingTime > IdleWalkdownLimitDelay && VgtRawTemp > IdleWalkdownLimitMinTemp) {
-		IdleWalkdownLimitPosition = constrain(IdleWalkdownLimitPosition - IdleWalkdownLimitSpeed, IdleWalkdownLimitMaxPos, 960);
+	if (IdlingTime > CurrentTune.IdleWalkdownLimitDelay && VgtRawTemp > CurrentTune.IdleWalkdownLimitMinTemp) {
+		IdleWalkdownLimitPosition = constrain(IdleWalkdownLimitPosition - CurrentTune.IdleWalkdownLimitSpeed, CurrentTune.IdleWalkdownLimitMaxPos, 960);
 	}
 	else {
 		IdleWalkdownLimitPosition = 960;
@@ -776,15 +789,15 @@ void UpdateIdleWalkdownLimit() {
 	GlobalFloats[IdleWalkdownMinimumPositionIndex] = IdleWalkdownLimitPosition;
 }
 void UpdateBOVoutput() {
-	AntisurgeActive = GlobalFloats[AntisurgeMinimumPositionIndex] <= BOVantisurgeThreshold;
+	AntisurgeActive = GlobalFloats[AntisurgeMinimumPositionIndex] <= CurrentTune.BOVantisurgeThreshold;
 	digitalWrite(BOVsolenoidPin, AntisurgeActive);
 }
 void UpdateOverspeedCompensation() {
 	//returns a POSITIVE value greater than 1 when limiting is active and 1.00 when inactive
 	float OverspeedCompensationValue = 1;
-	if (TSS.Value > TurbineOverspeedStartLimitRPM) {
+	if (TSS.Value > CurrentTune.TurbineOverspeedStartLimitRPM) {
 		OverspeedCompensationValue =
-			mapf(TSS.Value, TurbineOverspeedStartLimitRPM, TurbineOverspeedStartLimitRPM + TurbineOverspeedLimitingWidth, 1, MaxTSSspeedCompensation, true);
+			mapf(TSS.Value, CurrentTune.TurbineOverspeedStartLimitRPM, CurrentTune.TurbineOverspeedStartLimitRPM + CurrentTune.TurbineOverspeedLimitingWidth, 1, CurrentTune.MaxTSSspeedCompensation, true);
 	}
 	GlobalFloats[OverspeedCompIndex] = OverspeedCompensationValue;
 }
@@ -796,8 +809,8 @@ void UpdateAuxCompensation() {
 
 	float LowCompensationRate = GetGenericCompensationExp(Aux1, .5, 2);
 	float HighCompensationRate = GetGenericCompensationExp(Aux2, .5, 2);
-	float LowCompensationValue = mapf(TSS.Value, AuxCompTSSLowPoint, AuxCompTSSHighPoint, 1, 0, true) * LowCompensationRate;
-	float HighCompensationValue = mapf(TSS.Value, AuxCompTSSLowPoint, AuxCompTSSHighPoint, 0, 1, true) * HighCompensationRate;
+	float LowCompensationValue = mapf(TSS.Value, CurrentTune.AuxCompTSSLowPoint, CurrentTune.AuxCompTSSHighPoint, 1, 0, true) * LowCompensationRate;
+	float HighCompensationValue = mapf(TSS.Value, CurrentTune.AuxCompTSSLowPoint, CurrentTune.AuxCompTSSHighPoint, 0, 1, true) * HighCompensationRate;
 	GlobalFloats[AuxCompIndex] = LowCompensationValue + HighCompensationValue;
 	//Serialprint("Lowcomp rate   ", LowCompensationRate, 3);
 	//Serialprint("Low comp value ", LowCompensationValue,3);
@@ -806,7 +819,7 @@ void UpdateAuxCompensation() {
 void UpdateBoostLimitCompensation() {
 	//provides a value > 1 when limiting is active to increase nozzle size
 	//Internally it works with values greater than zero
-	static float MaxIntegralAccumulator = (BoostLimitIntegralMaxComp - 1) * BoostLimitIntegralRate; //
+	static float MaxIntegralAccumulator = (CurrentTune.BoostLimitIntegralMaxComp - 1) * CurrentTune.BoostLimitIntegralRate; //
 	static float IntegralAccumulator = 0;
 
 	float Setpoint = BoostRPMMap.Interpolate(RPM.Value);  //Get max allowed boost from map
@@ -819,10 +832,10 @@ void UpdateBoostLimitCompensation() {
 	float ProportionalFactor = 1;
 
 	if (OverboostRatio > 1) {
-		ProportionalFactor = ((OverboostRatio - 1) * BoostLimitProportionalRate) + 1; //May want to switch this to absolute rather than ratiometric
+		ProportionalFactor = ((OverboostRatio - 1) * CurrentTune.BoostLimitProportionalRate) + 1; //May want to switch this to absolute rather than ratiometric
 
 		IntegralAccumulator += OverboostDifference;
-		IntegralAccumulator *= BoostLimitIntegralFalloffRate;
+		IntegralAccumulator *= CurrentTune.BoostLimitIntegralFalloffRate;
 
 	}
 	else {
@@ -831,15 +844,15 @@ void UpdateBoostLimitCompensation() {
 	}
 
 
-	float IntegralFactor = 1 + (IntegralAccumulator * BoostLimitIntegralRate);
-	if (IntegralFactor > BoostLimitIntegralMaxComp) { //limits integral amount
+	float IntegralFactor = 1 + (IntegralAccumulator * CurrentTune.BoostLimitIntegralRate);
+	if (IntegralFactor > CurrentTune.BoostLimitIntegralMaxComp) { //limits integral amount
 		IntegralAccumulator = MaxIntegralAccumulator;  //max is set at top of function once when program starts
-		IntegralFactor = BoostLimitIntegralMaxComp;
+		IntegralFactor = CurrentTune.BoostLimitIntegralMaxComp;
 	}
 
-	float TempDiffFactor = MAP.Slope * BoostLimitDifferentialRate + 1; //Get the current slope and multiply by the rate
-	float TempDiffFactor2 = mapf(OverboostRatio, BoostLimitDifferentialOverboostRatio, 1, 1, TempDiffFactor, true); //slowly bring it in from a percentage of the underboost
-	float DifferentialFactor = constrain(TempDiffFactor2, 1 / BoostLimitDifferentialMaxComp, BoostLimitDifferentialMaxComp); //constrain
+	float TempDiffFactor = MAP.Slope * CurrentTune.BoostLimitDifferentialRate + 1; //Get the current slope and multiply by the rate
+	float TempDiffFactor2 = mapf(OverboostRatio, CurrentTune.BoostLimitDifferentialOverboostRatio, 1, 1, TempDiffFactor, true); //slowly bring it in from a percentage of the underboost
+	float DifferentialFactor = constrain(TempDiffFactor2, 1 / CurrentTune.BoostLimitDifferentialMaxComp, CurrentTune.BoostLimitDifferentialMaxComp); //constrain
 
 
 
@@ -859,129 +872,6 @@ void UpdateBoostLimitCompensation() {
 	GlobalFloats[BoostCompIndex] = ProportionalFactor * IntegralFactor * DifferentialFactor;
 
 }
-
-void UpdateLEDs() {
-	blinksequencer++;
-	if (blinksequencer > MaxBlinkSequencer) { blinksequencer = 0; }
-	boolean fastblink = (blinksequencer % 4 > 1);
-	boolean slowblink = blinksequencer % 2 > 0;
-	if (!Running) {
-		digitalWrite(GreenLedPin, fastblink);
-		digitalWrite(AmberLedPin, slowblink);
-		return;
-	}
-
-	//difference between turbine speed compensation and base position (ignoring compensations) 
-	int Limit = (GlobalFloats[LimitingAmountIndex]);
-
-	if (Limit > 150) {
-		digitalWrite(AmberLedPin, HIGH);
-	}
-	else if (Limit > 50) {
-		digitalWrite(AmberLedPin, fastblink);
-	}
-	else	if (Limit >= 1) {
-		digitalWrite(AmberLedPin, slowblink);
-	}
-	else {
-		digitalWrite(AmberLedPin, LOW);
-	}
-
-	float comp = GlobalFloats[AutoCompIndex];
-	if (comp > 1.5 || AntisurgeActive) {
-		digitalWrite(GreenLedPin, HIGH);
-	}
-	else if (comp > 1.25) {
-		digitalWrite(GreenLedPin, fastblink);
-	}
-	else if (comp > 1.01) {
-		digitalWrite(GreenLedPin, slowblink);
-	}
-	else {
-		digitalWrite(GreenLedPin, LOW);
-	}
-}
-
-void ProgressiveController() {
-	static int ProgressiveLoopNum = 0;
-	ProgressiveLoopNum++;
-	if (ProgressiveLoopNum > 10) { ProgressiveLoopNum = 0; }
-
-	unsigned long starttime = micros();
-	//Serialprintint("loop ", ProgressiveLoopNum);
-	switch (ProgressiveLoopNum) {
-	case 0:
-		//Serial.println("0");
-		//Serial.println("UpdateLEDs");
-		UpdateLEDs();
-		BPS.UpdateValue(Honeywell1000PSI.ReadFromPin(BrakePin));
-		break;
-
-	case 1:
-		//Serial.println("1");
-		ReadSwitches();
-		EGP.UpdateValue(Honeywell100PSI.ReadFromPin(EgpPin));
-		break;
-
-	case 2:
-		//Serial.println("2");
-		MAP.UpdateValue(Honeywell100PSI.ReadFromPin(MapPin));
-		break;
-
-	case 3:
-		//Serial.println("3");
-		FPS.UpdateValue(Honeywell100PSI.ReadFromPin(FpsPin));
-		break;
-
-	case 4:
-		//Serial.println("4");
-		TPS.UpdateValue(mapf(analogRead(TpsPin), 24, 560, 0, 100, true));
-		CalculateRPM();
-		CalculateTSS();
-		break;
-
-	case 5:
-		//Serial.println("5");
-
-		break;
-
-	case 6:
-		//Serial.println("6");
-		UpdateBoostLimitCompensation();
-		break;
-
-	case 7:
-
-		UpdateTotalCompensation();
-		UpdateAntiSurgeLimit();
-		UpdateIdleWalkdownLimit();
-		UpdateBOVoutput();
-
-		break;
-
-	case 8:
-		UpdateMinimumPosition(); // Update all minimums
-
-		break;
-
-	case 9:
-		UpdatePosition();
-		break;
-	case 10: //keep a predictable number of cycles between resets because of timing related functions
-		//Serial.println("10");
-
-		CalculationLoops++;
-
-		break;
-	}
-
-	unsigned long endtime = micros();
-	unsigned long timespan = endtime - starttime;
-	ProgressiveTiming[ProgressiveLoopNum] = max(ProgressiveTiming[ProgressiveLoopNum], timespan);
-
-
-}
-
 void SelectSerialMode() {
 	//called from Timer3 routine
 	Aux1 = mapf(analogRead(Aux1Pin), 0, 1023, -1, 1, false);
@@ -1267,53 +1157,129 @@ void ShowSerialHelp() {
 
 }
 
-void ReadCanMessage() {
-	if (CAN1.msgAvailable()) {                      // Check to see if a valid message has been received.
-		CanMessagesReceived++;
 
-		CAN msg;
-		CAN1.read(&msg);
+void UpdateLEDs() {
+	blinksequencer++;
+	if (blinksequencer > MaxBlinkSequencer) { blinksequencer = 0; }
+	boolean fastblink = (blinksequencer % 4 > 1);
+	boolean slowblink = blinksequencer % 2 > 0;
+	if (!Running) {
+		digitalWrite(GreenLedPin, fastblink);
+		digitalWrite(AmberLedPin, slowblink);
+		return;
+	}
 
-		switch (msg.ID)
-		{
-		case StatusMessageID:
-			VgtCommandPosition = ((msg.data[6] << 8) | msg.data[5]);
-			VgtRealPosition = ((msg.data[2] << 8) | msg.data[1]);
-			VgtMotorCommandSpeed = msg.data[7] - 127;
-			VgtRawTemp = msg.data[3];
-			break;
-		case ErrorMessageID:
-			PrintCANmessage(msg);
-			break;
-		default:
-			break;
-		}
+	//difference between turbine speed compensation and base position (ignoring compensations) 
+	int Limit = (GlobalFloats[LimitingAmountIndex]);
+
+	if (Limit > 150) {
+		digitalWrite(AmberLedPin, HIGH);
+	}
+	else if (Limit > 50) {
+		digitalWrite(AmberLedPin, fastblink);
+	}
+	else	if (Limit >= 1) {
+		digitalWrite(AmberLedPin, slowblink);
+	}
+	else {
+		digitalWrite(AmberLedPin, LOW);
+	}
+
+	float comp = GlobalFloats[AutoCompIndex];
+	if (comp > 1.5 || AntisurgeActive) {
+		digitalWrite(GreenLedPin, HIGH);
+	}
+	else if (comp > 1.25) {
+		digitalWrite(GreenLedPin, fastblink);
+	}
+	else if (comp > 1.01) {
+		digitalWrite(GreenLedPin, slowblink);
+	}
+	else {
+		digitalWrite(GreenLedPin, LOW);
 	}
 }
-void FormatForVGT(int Position) {
-	Position = constrain(Position, VgtMinPosition, VgtMaxPosition);
-	SendToVGT(Position);
-}
-void SendToVGT(int Position) {
-	//THIS SHOULD ONLY BE CALLED FROM "FormatForVGT" TO ENSURE limits
-	//Serial.print("Sending ");
-	//Serial.println(Position);
-	byte lo_byte = lowByte(Position);
-	byte hi_byte = highByte(Position);
-	//SendVgtRecalibrate();
 
-	byte data[] = { lo_byte, hi_byte, 0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF }; // data message with an added counter
-	//byte data[2] = {0x02, 0x00}; //for recalibrating gearbox
-	// Load message and send
-	CAN1.send(VGTaddress, extID, 8, data);
-}
-void SendVgtRecalibrate() {
+void ProgressiveController() {
+	static int ProgressiveLoopNum = 0;
+	ProgressiveLoopNum++;
+	if (ProgressiveLoopNum > 10) { ProgressiveLoopNum = 0; }
 
-	byte data[4] = { 0x00,0x00, 0x02, 0xFF, }; //for recalibrating gearbox
+	unsigned long starttime = micros();
+	//Serialprintint("loop ", ProgressiveLoopNum);
+	switch (ProgressiveLoopNum) {
+	case 0:
+		//Serial.println("0");
+		//Serial.println("UpdateLEDs");
+		UpdateLEDs();
+		BPS.UpdateValue(Honeywell1000PSI.ReadFromPin(BrakePin));
+		break;
 
-	CAN1.send(VGTaddress, extID, 8, data);
-	//delay(10000);
+	case 1:
+		//Serial.println("1");
+		ReadSwitches();
+		EGP.UpdateValue(Honeywell100PSI.ReadFromPin(EgpPin));
+		break;
+
+	case 2:
+		//Serial.println("2");
+		MAP.UpdateValue(Honeywell100PSI.ReadFromPin(MapPin));
+		break;
+
+	case 3:
+		//Serial.println("3");
+		FPS.UpdateValue(Honeywell100PSI.ReadFromPin(FpsPin));
+		break;
+
+	case 4:
+		//Serial.println("4");
+		TPS.UpdateValue(mapf(analogRead(TpsPin), 24, 560, 0, 100, true));
+		CalculateRPM();
+		CalculateTSS();
+		break;
+
+	case 5:
+		//Serial.println("5");
+
+		break;
+
+	case 6:
+		//Serial.println("6");
+		UpdateBoostLimitCompensation();
+		break;
+
+	case 7:
+
+		UpdateTotalCompensation();
+		UpdateAntiSurgeLimit();
+		UpdateIdleWalkdownLimit();
+		UpdateBOVoutput();
+
+		break;
+
+	case 8:
+		UpdateMinimumPosition(); // Update all minimums
+
+		break;
+
+	case 9:
+		UpdatePosition();
+		break;
+	case 10: //keep a predictable number of cycles between resets because of timing related functions
+		//Serial.println("10");
+
+		CalculationLoops++;
+
+		break;
+	}
+
+	unsigned long endtime = micros();
+	unsigned long timespan = endtime - starttime;
+	ProgressiveTiming[ProgressiveLoopNum] = max(ProgressiveTiming[ProgressiveLoopNum], timespan);
+
+
 }
+
 String GetLimitingFactorName() {
 	int minval = 1000;
 
@@ -1379,4 +1345,52 @@ int GetLimitingFactorIndex() {
 	return IndexCount; //if we've added something else and haven't defined it here
 }
 
+void FormatForVGT(int Position) {
+	Position = constrain(Position, VgtMinPosition, VgtMaxPosition);
+	SendToVGT(Position);
+}
+void SendToVGT(int Position) {
+	//THIS SHOULD ONLY BE CALLED FROM "FormatForVGT" TO ENSURE limits
+	//Serial.print("Sending ");
+	//Serial.println(Position);
+	byte lo_byte = lowByte(Position);
+	byte hi_byte = highByte(Position);
+	//SendVgtRecalibrate();
 
+	byte data[] = { lo_byte, hi_byte, 0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF }; // data message with an added counter
+	//byte data[2] = {0x02, 0x00}; //for recalibrating gearbox
+	// Load message and send
+	CAN1.send(VGTaddress, extID, 8, data);
+}
+void SendVgtRecalibrate() {
+
+	byte data[4] = { 0x00,0x00, 0x02, 0xFF, }; //for recalibrating gearbox
+
+	CAN1.send(VGTaddress, extID, 8, data);
+	//delay(10000);
+}
+
+
+void ReadCanMessage() {
+	if (CAN1.msgAvailable()) {                      // Check to see if a valid message has been received.
+		CanMessagesReceived++;
+
+		CAN msg;
+		CAN1.read(&msg);
+
+		switch (msg.ID)
+		{
+		case StatusMessageID:
+			VgtCommandPosition = ((msg.data[6] << 8) | msg.data[5]);
+			VgtRealPosition = ((msg.data[2] << 8) | msg.data[1]);
+			VgtMotorCommandSpeed = msg.data[7] - 127;
+			VgtRawTemp = msg.data[3];
+			break;
+		case ErrorMessageID:
+			PrintCANmessage(msg);
+			break;
+		default:
+			break;
+		}
+	}
+}

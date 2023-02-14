@@ -22,6 +22,10 @@
 #define Gm1BarMapSensorHighRawValue 939
 #define Gm1BarMapSensorHighValuePressure 13.7
 
+AnalogSensor GM1Bar(Gm1BarMapSensorLowRawValue, Gm1BarMapSensorHighRawValue, Gm1BarMapSensorLowValuePressure, Gm1BarMapSensorHighValuePressure, false);
+AnalogSensor GM2Bar(Gm2BarMapSensorLowRawValue, Gm2BarMapSensorHighRawValue, Gm2BarMapSensorLowValuePressure, Gm2BarMapSensorHighValuePressure, false);
+AnalogSensor Honeywell100PSI(Honeywell100PsiLowRawValue, Honeywell100PsiHighRawValue, Honeywell100PsiLowValuePressure, Honeywell100PsiHighValuePressure, false);
+AnalogSensor Honeywell1000PSI(Honeywell1000PsiLowRawValue, Honeywell1000PsiHighRawValue, Honeywell1000PsiLowValuePressure, Honeywell1000PsiHighValuePressure, false);
 
 #endif // !AnalogSensorCalibration_h
 
