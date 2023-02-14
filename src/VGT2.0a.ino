@@ -15,9 +15,9 @@
 #include "Map1d.h"
 #include "MyDataTypes.h"
 #include "MyAnalogSensor.h"
-
+#include "TuningParameters.h"
 #include "VGTstuff.h"
-
+#include "AnalogSensorCalibration.h"
 
 //#define baudrate 115200
 //#define baudrate 115200
@@ -78,9 +78,6 @@ Timer t3;
 
 #pragma region Mapping
 
-
-
-
 Map1d LilbbMap(8);
 Map1d TSSminimumPositionMap(8); //Minimum position based on turbine shaft speed, prevents overspeed regardless of other settings
 
@@ -90,82 +87,12 @@ Map1d RPMminimumPositionMap(10); //Minimum position based on engine RPM
 Map1d BoostMinimumPositionMap(10); //minimum position based on boost, may help keep the truck driveable if other sensors fail
 Map1d EGPminimumPositionMap(10);      //minimum position based on backpressure
 
-int TurbineSpeedDivisions[] = { 0, 20, 40, 60, 80, 100, 120, 140 };
-int TpsRowLabels[] = { 0, 5, 20, 40, 60, 100 };
-int RPMdivisions[] = { 0, 500, 750, 1000, 1250, 1500, 2000,  2500, 3000, 5000 };
-int PressureDivisions[] = { 0, 5, 10, 15, 20, 25, 30, 40, 60, 90 };
-
-//                    RPM      500    1000    1500    2500    5000  Uses RpmColumnLabels as breakpoints
-int AutobrakeMapData[] = { 90, 90, 90, 90, 96, 95, 94, 93, 90, 80 };
-int BoostRPMMapData[] = { 10,  5,  5,  5, 10, 15, 20, 30, 40, 40 };
-
-//                    RPM               500    1000    1500    2500    5000  Uses RpmColumnLabels as breakpoints
-int RPMminimumPositionMapData[] = { 80, 96, 96, 96, 95, 94, 92, 90, 80, 50 };
-
-//                                  0   20  40  60  80  100 120 140 
-int TSSminimumPositionMapData[] = { 96, 96, 96, 95, 90, 70, 30, 10 };
-
-//								      0    5   10     20      30  40  60  90
-int BoostMinimumPositionMapData[] = { 96, 93, 90, 85, 80, 75, 70, 50, 30, 10 };
-
-//								    0    5   10      20      30  40  60  90
-int EGPminimumPositionMapData[] = { 96, 95,  94, 90, 85, 80, 70, 60, 30, 10 };
-
-
-
-
-/*
-Map2d PositionMap;
-
-uint8_t *PositionMapData;
-uint8_t  PositionMapData_Up[] =
-{
-	//      750    1250    2000    3000
-	90, 60, 90, 90, 96, 95, 95, 94, 90, 90,  //0%  TPS
-	90, 60, 80, 80, 85, 70, 60, 60, 60, 60,  //10%
-	90, 90, 80, 80, 70, 70, 60, 60, 60, 60,  //20%
-	90, 70, 80, 80, 75, 70, 60, 60, 60, 60,  //40%
-	90, 50, 80, 75, 75, 70, 70, 70, 65, 50,  //60%
-	90, 50, 80, 75, 75, 70, 70, 70, 65, 50,  //100%
-};
-uint8_t  PositionMapData_Middle[] =
-{
-	//      750    1250    2000    3000
-	90, 60, 90, 90, 96, 95, 95, 94, 90, 90,  //0%  TPS
-	90, 60, 80, 80, 85, 75,  0,  0,  0,  0,  //10%
-	90, 90, 80, 80, 70, 70, 60,  0,  0,  0,  //20%
-	90, 70, 80, 80, 75, 70, 65, 60, 40,  0,  //40%
-	90, 50, 80, 75, 75, 70, 70, 70, 65, 50,  //60%
-	90, 50, 80, 75, 75, 70, 70, 70, 65, 50,  //100%
-};
-uint8_t  PositionMapData_Down[] =
-{
-	//      750    1250    2000    3000
-	95, 90, 94, 96, 95, 94, 93, 92, 91, 90,  //0%  TPS
-	90, 95, 90, 85, 70, 50, 30, 30, 30, 30,  //10%
-	90, 90, 90, 85, 70, 50, 20, 30, 30, 30,  //20%
-	90, 70, 90, 85, 80, 60, 30, 20, 20, 20,  //40%
-	90, 50, 85, 75, 70, 60, 40, 20, 20, 10,  //60%
-	90, 50, 80, 75, 70, 60, 40, 20, 20, 10,  //100%
-};
-*/
 int* LilbbMapData;
-int LilbbMapData_Up[] = //Tow
-// 0   20   40   60   80   100  120  140 
-{ 95,  95,  90,  80,  75,  50,  30,  0 };
-
-int LilbbMapData_Middle[] = //Normal
-// 0   20   40   60   80   100  120  140 
-{ 90,  90,  85,  80,  70,  52,  30,  0 };
-
-int LilbbMapData_Down[] = //Low Boost
-// 0   20   40   60   80   100  120  140 
-{ 90,  90,  80,  70,  60,  50,  20,  0 };
 
 #pragma endregion Mapping
 
-#pragma region globals
-enum indexes :byte {
+
+enum GlobalFloatIndexes :byte {
 	Undefined,  // just a dummy here that I can use if I haven't set anything, MUST BE FIRST (0 index)
 
 	//The following are compensators that apply to nozzle SIZE (not position)
@@ -227,86 +154,13 @@ MyVar BPS; //brake pressure sensor
 MyVar FPS; //Fuel pressure sensor
 MyVar SendPosition;            //The value we're sending to the VGT
 
-#pragma endregion  
-
-
-#pragma region Normal mode parameters
-//NORMAL MODE PARAMETERS
-const int VGTstartPosition = 0; //VGT position when starting or not running
-
-const int MinRunRPM = 400; //minimum RPM to consider the engine running, should be just a bit faster than the fastest crank speed
-const int MaxIdleRPM = 800; //maximum RPM to consider it idle
-const int MaxIdleTPS = 3;  //maximum TPS to consider it idle, if you have very steady TPS sensor you can set very low, it's not critical though
-
-
-const float MaxTotalCompensation = 3;
-const float MinTotalCompensation = .5;
-
-const float JakeBoostFactor = .8;            //partially closes turbo to build more boost when TPS > JakeBoostTPS
-const int   JakeBrakeTPSthreshold = 5;
-
-const int AuxCompTSSLowPoint = 40; //TSS below this will be soley influenced by Aux1 pot, 
-const int AuxCompTSSHighPoint = 80; //TSS above this will be soley influenced by Aux2 pot, if TSS is between, it is interpolated
-
-const int AntisurgeMinimumTPSslope = 20; //Set higher to make less sensitive to accidental triggers
-const float AntisurgeResponseRate = .1; //higher number = more response to 
-const float AntisurgeFalloffRate = .97; //higher number = faster falloff, .985 = slow, .950 = fast
-const float AntisurgeMaxVal = 1000;     //maximum the antisurge can get to, can be set above 1000 which will keep it at max open for a while before it closes
-const int BOVantisurgeThreshold = 600; //if antisurge is greater than this, enable BOV as well
-
-const float BoostLimitProportionalRate = .8;  //how aggressive the boost limiting to RPM happens
-const float BoostLimitIntegralRate = .02f;  // How much of the current limiting rate gets carried over as an integral
-const float BoostLimitIntegralFalloffRate = 0.96f; //How fast the integral rate falls off, Probably between .95 and .985 (it's sensitive)
-//remainder after 1 second is FalloffRate ^25 (25 loops per second) .95 ^25 ~= 1/4, .97^25 ~= 1/2
-const float BoostLimitIntegralMaxComp = 1.5;  //Maximium Integral contribution
-const float BoostLimitDifferentialRate = .01f;     //How much differential rate there is
-const float BoostLimitDifferentialMaxComp = 1.5;   //Maximum Differential contribution
-const float BoostLimitDifferentialOverboostRatio = .75; //Percentage of full boost when differential factor starts to kick in
-
-
-const float TurbineOverspeedStartLimitRPM = 120; // RPM*1000  Where the turbine limiting starts to kick in (Yellowline)
-const float TurbineOverspeedLimitingWidth = 20; //RPM *1000 + above. Where the nozzle size should be increased due to turbine overspeed (redline)
-const float MaxTSSspeedCompensation = 1.5;  // This is the additional opening of the vanes when turbine is at startlimitingRPM + limitingwidth
-
-const float IdleWalkdownLimitDelay = 20; //delay before idle walkdown starts (seconds)
-const float IdleWalkdownLimitSpeed = 1; //how fast the walkdown happens
-const float IdleWalkdownLimitMaxPos = 500; //Maximum open position 
-const float IdleWalkdownLimitMinTemp = 80; //Doesn't walkdown the idle position on unless warm (promote warmup) (VGT RAW temp)
-
-#pragma endregion Normal mode parameters
-#pragma region Sensor_Calibration
 int MinRawTPSposition = 25; // this automatically gets reduced to the minimum TPS raw position
 int MaxRawTPSposition = 500; // this needs to be manually adjusted to WOT
-
-#define Honeywell100PsiLowRawValue  100  //100 = 101 kpa
-#define Honeywell100PsiLowValuePressure  0
-#define Honeywell100PsiHighRawValue 921
-#define Honeywell100PsiHighValuePressure  100
-
-#define Honeywell1000PsiLowRawValue  80
-#define Honeywell1000PsiLowValuePressure  0
-#define Honeywell1000PsiHighRawValue  921
-#define Honeywell1000PsiHighValuePressure  1000
-
-//2 bar GM map sensor = 615 raw value at sea level
-#define Gm2BarMapSensorLowRawValue 106
-#define Gm2BarMapSensorLowValuePressure 1.87
-#define Gm2BarMapSensorHighRawValue 469
-#define Gm2BarMapSensorHighValuePressure 13.7
-
-#define Gm1BarMapSensorLowRawValue 187
-#define Gm1BarMapSensorLowValuePressure 1.87
-#define Gm1BarMapSensorHighRawValue 939
-#define Gm1BarMapSensorHighValuePressure 13.7
 
 AnalogSensor GM1Bar(Gm1BarMapSensorLowRawValue, Gm1BarMapSensorHighRawValue, Gm1BarMapSensorLowValuePressure, Gm1BarMapSensorHighValuePressure, false);
 AnalogSensor GM2Bar(Gm2BarMapSensorLowRawValue, Gm2BarMapSensorHighRawValue, Gm2BarMapSensorLowValuePressure, Gm2BarMapSensorHighValuePressure, false);
 AnalogSensor Honeywell100PSI(Honeywell100PsiLowRawValue, Honeywell100PsiHighRawValue, Honeywell100PsiLowValuePressure, Honeywell100PsiHighValuePressure, false);
 AnalogSensor Honeywell1000PSI(Honeywell1000PsiLowRawValue, Honeywell1000PsiHighRawValue, Honeywell1000PsiLowValuePressure, Honeywell1000PsiHighValuePressure, false);
-#pragma endregion
-
-
-
 
 
 

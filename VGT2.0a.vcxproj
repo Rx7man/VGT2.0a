@@ -112,6 +112,7 @@
     </None>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\AnalogSensorCalibration.h" />
     <ClInclude Include="src\CANLibrarymaster\can.h" />
     <ClInclude Include="src\HelperFunctions.h" />
     <ClInclude Include="src\Map1d.h" />
@@ -123,6 +124,7 @@
     <ClInclude Include="src\PinDefs.h" />
     <ClInclude Include="src\Timer\Event.h" />
     <ClInclude Include="src\Timer\Timer.h" />
+    <ClInclude Include="src\TuningParameters.h" />
     <ClInclude Include="src\VGTstuff.h" />
     <ClInclude Include="__vm\.VGT2.0a.vsarduino.h" />
   </ItemGroup>
