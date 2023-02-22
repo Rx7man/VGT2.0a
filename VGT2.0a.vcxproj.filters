@@ -15,18 +15,10 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <None Include="src\VGT2.0a.ino">
-      <Filter>Source Files</Filter>
-    </None>
-  </ItemGroup>
-  <ItemGroup>
     <ClInclude Include="__vm\.VGT2.0a.vsarduino.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\HelperFunctions.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Map1d.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\MyAnalogSensor.h">
@@ -56,13 +48,13 @@
     <ClInclude Include="src\Timer\Timer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\TuningParameters.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="src\AnalogSensorCalibration.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\SerialCommFunctions.h">
+    <ClInclude Include="src\Map1d.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\TuneClass.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -83,6 +75,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\Timer\Timer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\VGT2.0a.ino">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\TuneClass.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

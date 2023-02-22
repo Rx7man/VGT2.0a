@@ -34,7 +34,7 @@ inline float GetGenericCompensationExp(float value, float NegativeFactor, float 
 	if (Constrain) { value = constrain(value, -1, 1); }
 
 	if (value < 0) {
-		return -pow(NegativeFactor, -value);
+		return pow(NegativeFactor, -value);
 	}
 	else {
 		return pow(PositiveFactor, value);

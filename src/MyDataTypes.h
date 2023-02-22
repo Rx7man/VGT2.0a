@@ -19,7 +19,7 @@ union eightbyte {
 	uint64_t uint64;
 };
 
-enum tristateswitch {undefined = -100, down = -1, middle = 0, up = 1};
+enum tristateswitch {undefined = -1, down = 0, middle = 1, up = 2};
 
 #endif // !MyDataTypes_h
 

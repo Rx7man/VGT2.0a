@@ -4,17 +4,23 @@
 * Created: 1/8/2016 9:16:00 PM
 * Author: Y2D
 */
-#include "Arduino.h"
+//#include "Arduino.h"
 
 #ifndef __MAP1D_H__
 #define __MAP1D_H__
 
 class Map1d
 {
-//variables
+ 
 public:
-Map1d(int CellCount);
+//constructor
+	Map1d();
+ Map1d(int CellCount);
 
+ //destructor
+ ~Map1d();
+
+//variables
 int* MapData ; // values 
 int* Divisions;  // Cell index values aka division points
 float Offset = 0; //applied to the interpolation

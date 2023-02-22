@@ -20,8 +20,7 @@
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <CharacterSet>MultiByte</CharacterSet>
-    <PlatformToolset>
-    </PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
@@ -77,10 +76,10 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>$(ProjectDir)src;$(ProjectDir)..\..\..\..\..\Program Files (x86)\Arduino\hardware\arduino\avr\libraries\SPI\src;$(ProjectDir)..\..\..\..\..\Program Files (x86)\Arduino\hardware\arduino\avr\cores\arduino;$(ProjectDir)..\..\..\..\..\Program Files (x86)\Arduino\hardware\arduino\avr\variants\mega;$(ProjectDir)..\..\..\..\..\Program Files (x86)\Arduino\hardware\tools\avr\\lib\gcc\avr\7.3.0\include;$(ProjectDir)..\..\..\..\..\Program Files (x86)\Arduino\hardware\tools\avr\avr\include;$(ProjectDir)..\..\..\..\..\Program Files (x86)\Arduino\hardware\tools\avr\\lib\gcc\avr\7.3.0\include;$(ProjectDir)..\..\..\..\..\Program Files (x86)\Arduino\hardware\tools\avr\avr\include-fixed;$(ProjectDir)..\..\..\..\..\Program Files (x86)\Arduino\hardware\tools\avr\avr\include\avr;$(ProjectDir)..\..\..\..\..\Program Files (x86)\Arduino\hardware\tools\avr\lib\gcc\avr\4.9.2\include;$(ProjectDir)..\..\..\..\..\Program Files (x86)\Arduino\hardware\tools\avr\lib\gcc\avr\4.9.2\include;$(ProjectDir)..\..\..\..\..\Program Files (x86)\Arduino\hardware\tools\avr\lib\gcc\avr\4.9.3\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <ForcedIncludeFiles>$(ProjectDir)..\__vm\.VGT2.0a.vsarduino.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
+      <AdditionalIncludeDirectories>$(ProjectDir)src;$(ProjectDir)..\..\..\..\..\Program Files (x86)\Arduino\hardware\arduino\avr\cores\arduino;$(ProjectDir)..\..\..\..\..\Program Files (x86)\Arduino\hardware\arduino\avr\variants\mega;$(ProjectDir)..\..\..\..\..\Program Files (x86)\Arduino\hardware\arduino\avr\libraries\SPI\src;$(ProjectDir)..\..\..\..\..\\Users\\Y2D\\source\\repos\\VGT2.0a\\src;$(ProjectDir)..\..\..\..\..\\Program Files (x86)\\Arduino\\hardware\\arduino\\avr\\cores\\arduino;$(ProjectDir)..\..\..\..\..\\Program Files (x86)\\Arduino\\hardware\\arduino\\avr\\variants\\mega;$(ProjectDir)..\..\..\..\..\\Program Files (x86)\\Arduino\\hardware\\arduino\\avr\\libraries\\SPI\\src;$(ProjectDir)..\..\..\..\..\\Program Files (x86)\\Arduino\\hardware\\tools\\avr\\\\lib\\gcc\\avr\\7.3.0\\include;$(ProjectDir)..\..\..\..\..\\Program Files (x86)\\Arduino\\hardware\\tools\\avr\\avr\\include;$(ProjectDir)..\..\..\..\..\\Program Files (x86)\\Arduino\\hardware\\tools\\avr\\\\lib\\gcc\\avr\\7.3.0\\include;$(ProjectDir)..\..\..\..\..\\Program Files (x86)\\Arduino\\hardware\\tools\\avr\\avr\\include-fixed;$(ProjectDir)..\..\..\..\..\\Program Files (x86)\\Arduino\\hardware\\tools\\avr\\avr\\include\\avr;$(ProjectDir)..\..\..\..\..\\Program Files (x86)\\Arduino\\hardware\\tools\\avr\\lib\\gcc\\avr\\4.8.1\\include;$(ProjectDir)..\..\..\..\..\\Program Files (x86)\\Arduino\\hardware\\tools\\avr\\lib\\gcc\\avr\\4.9.2\\include;$(ProjectDir)..\..\..\..\..\\Program Files (x86)\\Arduino\\hardware\\tools\\avr\\lib\\gcc\\avr\\4.9.3\\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <ForcedIncludeFiles>$(ProjectDir)__vm\.VGT2.0a.vsarduino.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
       <IgnoreStandardIncludePath>true</IgnoreStandardIncludePath>
-      <PreprocessorDefinitions>__AVR_atmega2560__;__AVR_ATmega2560__;F_CPU=16000000L;ARDUINO=108013;ARDUINO_AVR_MEGA2560;ARDUINO_ARCH_AVR;__cplusplus=201103L;_VMICRO_INTELLISENSE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_VMICRO_INTELLISENSE;__AVR_atmega2560__;__AVR_ATmega2560__;F_CPU=16000000L;ARDUINO=108013;ARDUINO_AVR_MEGA2560;ARDUINO_ARCH_AVR;__cplusplus=201103L;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -107,9 +106,11 @@
     <DebuggerFlavor>VisualMicroDebugger</DebuggerFlavor>
   </PropertyGroup>
   <ItemGroup>
-    <None Include="src\VGT2.0a.ino">
+    <ClCompile Include="src\TuneClass.cpp" />
+    <ClCompile Include="src\VGT2.0a.ino">
       <FileType>CppCode</FileType>
-    </None>
+      <DeploymentContent>true</DeploymentContent>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\AnalogSensorCalibration.h" />
@@ -121,10 +122,9 @@
     <ClInclude Include="src\MyPIDs.h" />
     <ClInclude Include="src\MyVar.h" />
     <ClInclude Include="src\PinDefs.h" />
-    <ClInclude Include="src\SerialCommFunctions.h" />
     <ClInclude Include="src\Timer\Event.h" />
     <ClInclude Include="src\Timer\Timer.h" />
-    <ClInclude Include="src\TuningParameters.h" />
+    <ClInclude Include="src\TuneClass.h" />
     <ClInclude Include="src\VGTstuff.h" />
     <ClInclude Include="__vm\.VGT2.0a.vsarduino.h" />
   </ItemGroup>
@@ -139,4 +139,9 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
+  <ProjectExtensions>
+    <VisualStudio>
+      <UserProperties arduino.upload.port="COM14" />
+    </VisualStudio>
+  </ProjectExtensions>
 </Project>

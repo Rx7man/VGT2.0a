@@ -23,6 +23,13 @@ Anything where you want a custom response rate
 
 
 //constructor
+Map1d::Map1d() { //default empty constructor
+	MapData = 0;
+	Divisions = 0;
+	Scaling = 0;
+	CellCount = 0;
+	Offset = 0;
+}
 Map1d::Map1d(int cellcount){
 	MapData = new int[cellcount];
 	Divisions = new int[cellcount];
@@ -30,13 +37,17 @@ Map1d::Map1d(int cellcount){
 	Scaling = 1;
 	Offset = 0;
 }
+Map1d::~Map1d() { //not that it's ever used in this project but might as well have it
+	delete(MapData);
+	delete(Divisions);
+}
 
 int Map1d::GetCellCount() {
 	return CellCount;
 }
 
 float Map1d::Interpolate(int Xvalue){
-	if (CellCount < 2) {return Xvalue;} // We can't determine a slope with 1 point
+	if (CellCount < 2) {return 0;} // We can't determine a slope with 1 point
 	if (Xvalue < Divisions[0]) { return Divisions[0]; }
 	if (Xvalue > Divisions[CellCount - 1]) { return Divisions[CellCount - 1]; }
 	int LowIndex = GetLowerCellIndex(Xvalue);
@@ -58,13 +69,7 @@ int Map1d::GetLowerCellIndex(int Xvalue){
 }
 
 float Map1d::mapf(float value, float oldlow, float oldhigh, float newlow, float newhigh) {
-	//I think this is identical to the arduino map(), but I had to write it for VB, so I included it here
-	float rval = 0;
-	if ((oldhigh - oldlow) != 0) {
-		rval = float(value - oldlow) / float(oldhigh - oldlow) * float(newhigh - newlow) + newlow;
-	}//if
-	else {
-		rval = value;
-	}//else
-	return rval;
-} //Remap
+	//I think this is identical to the arduino map(), but I had to write it for floats, so I included it here
+		return float(value - oldlow) / float(oldhigh - oldlow) * float(newhigh - newlow) + newlow;
+	
+} 
